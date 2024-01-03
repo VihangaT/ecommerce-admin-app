@@ -25,13 +25,19 @@ export default function ProductForm({
     }
     setGoToProducts(true);
   }
-  function uploadImages(ev) {
+  async function uploadImages(ev) {
     const files = ev.target?.files;
     if (files?.length > 0) {
       const data = new FormData();
-      files.forEach((file) => {
+      for (const file of files) {
         data.append("file", file);
+      }
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: data,
       });
+      console.log(res);
     }
   }
   if (goToProducts) {
