@@ -14,7 +14,14 @@ function Categories({ swal }) {
   }, []);
   async function saveCategory(ev) {
     ev.preventDefault();
-    const data = { name, parentCategory };
+    const data = {
+      name,
+      parentCategory,
+      properties: properties.map((p) => ({
+        name: p.name,
+        values: p.values.split(","),
+      })),
+    };
 
     if (editedCategory) {
       data._id = editedCategory._id;
@@ -25,6 +32,7 @@ function Categories({ swal }) {
     }
     setName("");
     setParentCategory("");
+    setProperties([]);
     fetchCategories();
   }
 
@@ -38,6 +46,13 @@ function Categories({ swal }) {
     setEditedCategory(category);
     setName(category.name);
     setParentCategory(category?.parent?._id);
+    console.log("hits here", category.properties);
+    setProperties(
+      category.properties.map((property) => ({
+        name: property.name,
+        values: property.values.join(","),
+      }))
+    );
   }
 
   function deleteCategory(category) {
@@ -171,10 +186,12 @@ function Categories({ swal }) {
         </div>
         {editedCategory && (
           <button
+            type="button"
             onClick={() => {
               setEditedCategory(null);
               setName("");
               setParentCategory("");
+              setProperties([]);
             }}
             className="btn-default"
           >
@@ -203,12 +220,14 @@ function Categories({ swal }) {
                   <td>{category?.parent?.name}</td>
                   <td>
                     <button
+                      type="button"
                       onClick={() => editCategory(category)}
                       className="btn-primary mr-1"
                     >
                       Edit
                     </button>
                     <button
+                      type="button"
                       onClick={() => deleteCategory(category)}
                       className="btn-primary"
                     >
