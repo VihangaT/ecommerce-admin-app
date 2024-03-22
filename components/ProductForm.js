@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Spinner from "./Spinner";
 import { ReactSortable } from "react-sortablejs";
+import { v4 as uuidv4 } from "uuid";
 
 export default function ProductForm({
   _id,
@@ -13,6 +14,7 @@ export default function ProductForm({
   price: existingPrice,
   images: existingImages,
   category: assignedCategory,
+  properties: assignedProperties,
 }) {
   const [title, setTitle] = useState(existingTitle || "");
   const [description, setDescription] = useState(existingDescription || "");
@@ -22,6 +24,9 @@ export default function ProductForm({
   const [isUploading, setIsUploading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState(assignedCategory || "");
+  const [productProperties, setProductProperties] = useState(
+    assignedProperties || {}
+  );
 
   const router = useRouter();
 
@@ -32,7 +37,14 @@ export default function ProductForm({
   }, []);
 
   async function saveProduct(ev) {
-    const data = { title, description, price, images, category };
+    const data = {
+      title,
+      description,
+      price,
+      images,
+      category,
+      properties: productProperties,
+    };
     ev.preventDefault();
     if (_id) {
       await axios.put("/api/products", { ...data, _id });
@@ -66,80 +78,123 @@ export default function ProductForm({
     console.log(arguments);
   }
 
-  return (
-    <form onSubmit={saveProduct}>
-      <label>Product Name</label>
-      <input
-        type="text"
-        placeholder="Product Name"
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-      />
-      <label>Category</label>
-      <select value={category} onChange={(ev) => setCategory(ev.target.value)}>
-        <option value="">uncategorized</option>
-        {categories.length > 0 &&
-          categories.map((category) => (
-            <option key={category._id} value={category._id}>
-              {category.name}
-            </option>
-          ))}
-      </select>
+  //This is not exactly the same as the original code, but it's close enough
+  function setProductProp(propName, value) {
+    setProductProperties((oldProps) => {
+      return { ...oldProps, [propName]: value };
+    });
+  }
 
-      <label>Photos</label>
-      <div className="mb-2 flex flex-wrap gap-1">
-        <ReactSortable
-          className="flex flex-wrap gap-1"
-          list={images}
-          setList={updateImagesOrder}
+  const propertiesToFill = [];
+  if (categories.length > 0 && category) {
+    let catInfo = categories.find(({ _id }) => _id === category);
+    propertiesToFill.push(...catInfo.properties);
+    while (catInfo?.parent?._id) {
+      const parentCat = categories.find(
+        ({ _id }) => _id === catInfo?.parent?._id
+      );
+      propertiesToFill.push(...parentCat.properties);
+      catInfo = parentCat;
+    }
+
+    return (
+      <form onSubmit={saveProduct}>
+        <label>Product Name</label>
+        <input
+          type="text"
+          placeholder="Product Name"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+        <label>Category</label>
+        <select
+          value={category}
+          onChange={(ev) => setCategory(ev.target.value)}
         >
-          {!!images?.length &&
-            images.map((link) => (
-              <div className="h-24" key={link}>
-                <img className="rounded-lg" src={link} alt="" />
-              </div>
+          <option value="">uncategorized</option>
+          {categories.length > 0 &&
+            categories.map((category) => (
+              <option key={category._id} value={category._id}>
+                {category.name}
+              </option>
             ))}
-        </ReactSortable>
-        {isUploading && (
-          <div className="h-24 p-1 flex items-center">
-            <Spinner />
-          </div>
-        )}
-        <label className="w-24 h-24 cursor-pointer flex items-center justify-center text-sm gap-1 text-gray-500 rounded-lg bg-gray-200">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="w-6 h-6"
+        </select>
+
+        {propertiesToFill.length > 0 &&
+          propertiesToFill.map((p) => (
+            <div className="flex gap-1" key={uuidv4()}>
+              <div>{p.name}</div>
+              <select
+                value={productProperties[p.name]}
+                onChange={(ev) => setProductProp(p.name, ev.target.value)}
+              >
+                {p.values.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        <label>Photos</label>
+        <div className="mb-2 flex flex-wrap gap-1">
+          <ReactSortable
+            className="flex flex-wrap gap-1"
+            list={images}
+            setList={updateImagesOrder}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15m0-3-3-3m0 0-3 3m3-3V15"
-            />
-          </svg>
-          <div>Upload</div>
-          <input type="file" className="hidden" onChange={uploadImages}></input>
-        </label>
-      </div>
-      <label>Description</label>
-      <textarea
-        placeholder="Description"
-        value={description}
-        onChange={(event) => setDescription(event.target.value)}
-      ></textarea>
-      <label>Price in LKR</label>
-      <input
-        type="text"
-        placeholder="Price"
-        value={price}
-        onChange={(event) => setPrice(event.target.value)}
-      />
-      <button type="submit" className="btn-primary">
-        Save
-      </button>
-    </form>
-  );
+            {!!images?.length &&
+              images.map((link) => (
+                <div className="h-24" key={link}>
+                  <img className="rounded-lg" src={link} alt="" />
+                </div>
+              ))}
+          </ReactSortable>
+          {isUploading && (
+            <div className="h-24 p-1 flex items-center">
+              <Spinner />
+            </div>
+          )}
+          <label className="w-24 h-24 cursor-pointer flex items-center justify-center text-sm gap-1 text-gray-500 rounded-lg bg-gray-200">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15m0-3-3-3m0 0-3 3m3-3V15"
+              />
+            </svg>
+            <div>Upload</div>
+            <input
+              type="file"
+              className="hidden"
+              onChange={uploadImages}
+            ></input>
+          </label>
+        </div>
+        <label>Description</label>
+        <textarea
+          placeholder="Description"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+        ></textarea>
+        <label>Price in LKR</label>
+        <input
+          type="text"
+          placeholder="Price"
+          value={price}
+          onChange={(event) => setPrice(event.target.value)}
+        />
+        <button type="submit" className="btn-primary">
+          Save
+        </button>
+      </form>
+    );
+  }
 }
