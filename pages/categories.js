@@ -46,7 +46,6 @@ function Categories({ swal }) {
     setEditedCategory(category);
     setName(category.name);
     setParentCategory(category?.parent?._id);
-    console.log("hits here", category.properties);
     setProperties(
       category.properties.map((property) => ({
         name: property.name,

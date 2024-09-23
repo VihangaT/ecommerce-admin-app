@@ -1,9 +1,11 @@
 import { mongooseConnect } from "@/lib/mongoose";
 import { Category } from "@/models/Category";
+import { isAdminRequest } from "./auth/[...nextauth]";
 
 export default async function handle(req, res) {
   const method = req.method;
   await mongooseConnect();
+  await isAdminRequest(req, res);
 
   if (method === "GET") {
     res.json(await Category.find().populate("parent"));
@@ -32,9 +34,9 @@ export default async function handle(req, res) {
     res.json(categoryDoc);
   }
 
-    if (method === "DELETE") {
-      const { _id } = req.query;
-      await Category.deleteOne({ _id });
-      res.json("OK");
-    }
+  if (method === "DELETE") {
+    const { _id } = req.query;
+    await Category.deleteOne({ _id });
+    res.json("OK");
+  }
 }
